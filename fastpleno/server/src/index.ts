@@ -8,7 +8,6 @@ import { config } from "./config";
 import { db, save, uid } from "./db";
 import { authRouter } from "./auth";
 import { examsRouter } from "./exams";
-import { messagesRouter } from "./messages";
 
 const app = express();
 app.use(cors());
@@ -16,7 +15,6 @@ app.use(express.json());
 
 app.use("/api/auth", authRouter);
 app.use("/api/exams", examsRouter);
-app.use("/api/messages", messagesRouter);
 
 // Em produção, o Node também entrega o site (pasta client/dist, gerada por "npm run build" no client).
 const clientDist = path.resolve("../client/dist");

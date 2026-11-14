@@ -1,14 +1,9 @@
-// Área logada: duas abas, "Provas" e "Mensagens".
-import { useState } from "react";
 import { useAuth } from "../auth";
-import { Chat } from "../components/Chat";
 import { Exams } from "../components/Exams";
-import { Icon } from "../components/Icon";
 import { Logo } from "../components/Logo";
 
 export default function Portal() {
   const { user, logout } = useAuth();
-  const [tab, setTab] = useState<"provas" | "mensagens">("provas");
   if (!user) return null;
 
   return (
@@ -24,12 +19,7 @@ export default function Portal() {
         </div>
       </header>
 
-      <nav className="tabs">
-        <button className={tab === "provas" ? "active" : ""} onClick={() => setTab("provas")}><Icon name="file" size={18} /> Provas</button>
-        <button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}><Icon name="message" size={18} /> Mensagens</button>
-      </nav>
-
-      <main>{tab === "provas" ? <Exams /> : <Chat />}</main>
+      <main><Exams /></main>
     </div>
   );
 }

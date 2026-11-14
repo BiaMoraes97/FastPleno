@@ -1,5 +1,5 @@
 // Todas as chamadas ao servidor ficam aqui. Se mudar uma rota no back-end, ajuste só este arquivo.
-import { Conversation, Exam, Message, User } from "./types";
+import {Exam, User } from "./types";
 
 const TOKEN_KEY = "fastpleno_token";
 export const tokenStore = {
@@ -37,10 +37,6 @@ export const api = {
   reformat: (id: string) => request<Exam>(`/exams/${id}/reformat`, { method: "POST" }),
   markPrinted: (id: string) => request<Exam>(`/exams/${id}/printed`, { method: "PATCH" }),
 
-  conversations: () => request<Conversation[]>("/messages/conversations"),
-  messages: (professorId?: string) => request<Message[]>(`/messages?professorId=${professorId ?? ""}`),
-  sendMessage: (text: string, professorId?: string) =>
-    request<Message>("/messages", { method: "POST", body: json({ text, professorId }) }),
 };
 
 /** Baixa um arquivo protegido (precisa do token, por isso não é um link simples). */

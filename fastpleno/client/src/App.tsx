@@ -5,7 +5,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Portal from "./pages/Portal";
-import ComoFunciona from "./pages/Comofunciona";
+import ComoFunciona from "./pages/ComoFunciona";
 
 export default function App() {
   return (

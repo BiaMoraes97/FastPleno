@@ -16,6 +16,3 @@ export interface Exam {
   errorMessage?: string;
   createdAt: string;
 }
-
-export interface Message { id: string; senderId: string; senderRole: Role; text: string; createdAt: string }
-export interface Conversation { professorId: string; professorName: string; lastMessage: string | null; lastAt: string | null }

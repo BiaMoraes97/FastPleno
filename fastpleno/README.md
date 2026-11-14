@@ -1,7 +1,7 @@
 # FastPleno — Gestão e formatação inteligente de avaliações
 
 Professores enviam as questões (.docx ou foto das folhas), a IA formata no modelo do colégio e a
-direção revisa, aprova e imprime. Tem chat privado professor ↔ direção.
+direção revisa, aprova e imprime.
 
 **Stack:** React + TypeScript (Vite) no `client/` · Node.js + Express + TypeScript no `server/`.
 
@@ -47,6 +47,5 @@ Como funciona: `ai.ts` lê o arquivo e pede à IA um JSON com as questões → `
 
 - **Banco de dados em arquivo JSON** (`server/data/db.json`): simples para começar. Para uso real, migre para MySQL/PostgreSQL.
 - **Figuras dentro do .docx** não são extraídas; só o texto. Fotos das folhas são lidas pela IA normalmente.
-- **Chat por atualização a cada 4 s** (polling). Para tempo real, use Socket.IO.
 - Antes de publicar: `ENABLE_DEMO=false`, troque `JWT_SECRET` e `DIRECTION_CODE`, use HTTPS.
 - Publicar: `cd client && npm run build`; depois, em `server`, `npm run build && npm start` — o Node serve o site também.

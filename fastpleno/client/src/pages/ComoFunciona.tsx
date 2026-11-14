@@ -30,7 +30,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         number: "01",
         title: "Acesse o Portal e preencha os dados da prova",
         description:
-          "Entre com seu login institucional (ou crie sua conta) e preencha as informações básicas da avaliação: seu nome, série, disciplina, título da prova, além do mês e ano da aplicação.",
+          "Entre com seu login institucional (ou crie sua conta) e preencha as informações básicas da avaliação: nome do professor(a), série, disciplina, título da prova, mês e ano da aplicação, além de para quando você precisa da prova impressa.",
         tip: "Dica: Confira o título e a série antes de enviar para agilizar a triagem da coordenação.",
         image: "/prints/prof-passo1.png",
         imageAlt: "Formulário de envio com dados da avaliação preenchidos pelo professor",
@@ -58,7 +58,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         title: "Acompanhe o fluxo até a impressão",
         description:
           "Na aba 'Provas anteriores', você acompanha em tempo real em qual etapa sua avaliação está (enviada, em formatação/revisão pela coordenação ou impressa).",
-        tip: "Use o chat integrado caso a coordenação solicite alguma correção no conteúdo das questões.",
+        tip: "Acompanhe o status da sua prova em tempo real e saiba quando ela foi impressa.",
         image: "/prints/prof-passo4.png",
         imageAlt: "Aba Provas anteriores mostrando o status do fluxo de impressão",
       },
@@ -93,9 +93,9 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         title: "Revise o resultado ou solicite ajustes à IA",
         description:
           "Abra a pré-visualização da prova formatada para conferir a estrutura. Se precisar de alguma correção nas questões, fale direto com à IA pelo chat do card; se estiver tudo certo, aprove.",
-        tip: "Todo o histórico de mensagens fica registrado na própria avaliação.",
+        tip: "Cada etapa é prévia e reversível: você pode solicitar ajustes ou reverter a aprovação antes de enviar para impressão.",
         image: "/prints/coord-passo3.png",
-        imageAlt: "Pré-visualização da prova formatada e chat com o professor",
+        imageAlt: "Pré-visualização da prova formatada",
       },
       {
         number: "04",

@@ -34,24 +34,13 @@ export interface Exam {
   updatedAt: string;
 }
 
-// Cada professor tem UMA conversa privada com a direção (professorId identifica a conversa).
-export interface Message {
-  id: string;
-  professorId: string;
-  senderId: string;
-  senderRole: Role;
-  text: string;
-  createdAt: string;
-}
-
 interface Data {
   users: User[];
   exams: Exam[];
-  messages: Message[];
 }
 
 function load(): Data {
-  if (!fs.existsSync(config.dataFile)) return { users: [], exams: [], messages: [] };
+  if (!fs.existsSync(config.dataFile)) return { users: [], exams: []};
   return JSON.parse(fs.readFileSync(config.dataFile, "utf8"));
 }
 
