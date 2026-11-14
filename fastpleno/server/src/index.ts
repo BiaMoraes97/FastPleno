@@ -8,10 +8,12 @@ import { config } from "./config";
 import { db, save, uid } from "./db";
 import { authRouter } from "./auth";
 import { examsRouter } from "./exams";
+import passwordResetRoutes from "./passwordReset";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use("/api", passwordResetRoutes);
 
 app.use("/api/auth", authRouter);
 app.use("/api/exams", examsRouter);
