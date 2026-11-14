@@ -1,4 +1,3 @@
-// Ponto de entrada do servidor: monta as rotas e (em produção) serve o front-end.
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import fs from "fs";
@@ -30,7 +29,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(400).json({ error: err.message });
 });
 
-// Cria contas de demonstração na primeira execução (desligue com ENABLE_DEMO=false).
 function seedDemoAccounts() {
   if (!config.enableDemo || db.users.length > 0) return;
   const passwordHash = bcrypt.hashSync("demo123", 10);

@@ -1,5 +1,5 @@
-// Rotas das provas: enviar, listar, baixar, reformatar e marcar como impressa.
-// Fluxo: professor envia -> AGUARDANDO_FORMATACAO -> IA formata -> PRONTA_PARA_IMPRESSAO -> direção imprime -> IMPRESSA
+// Rotas das provas: enviar, listar, baixar, formatar (coordenação) e marcar como impressa.
+// Fluxo: professor envia -> AGUARDANDO_FORMATACAO -> coordenação aciona IA -> PRONTA_PARA_IMPRESSAO -> direção imprime -> IMPRESSA
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
@@ -43,7 +43,7 @@ async function formatExam(examId: string) {
       title: exam.title,
       subject: exam.subject,
       className: exam.className,
-      teacherName: teacher?.name ?? "",
+      teacherName: exam.teacherName || teacher?.name || "",
     });
     exam.formattedFile = `${exam.id}.docx`;
     fs.writeFileSync(path.join(formattedDir, exam.formattedFile), buffer);
@@ -59,17 +59,24 @@ async function formatExam(examId: string) {
 
 export const examsRouter = Router();
 
-// Enviar prova (só professor). A formatação roda em segundo plano.
+// Enviar prova (só professor). Vai direto para a fila da coordenação SEM acionar a IA.
 examsRouter.post("/", requireAuth, requireRole("PROFESSOR"), upload.single("file"), (req, res) => {
-  const { title, subject, className } = req.body ?? {};
-  if (!req.file) return res.status(400).json({ error: "Anexe o arquivo da prova." });
-  if (!title || !subject || !className) return res.status(400).json({ error: "Preencha título, disciplina e turma." });
+  const { title, subject, className, teacherName, applicationMonthYear, neededByDate } = req.body ?? {};
+  if (!req.file) return res.status(400).json({ error: "Anexe o arquivo .docx da prova." });
+  if (!title || !subject || !className) {
+    return res.status(400).json({ error: "Preencha título, disciplina e turma." });
+  }
 
   const now = new Date().toISOString();
   const exam: Exam = {
     id: uid(),
     teacherId: req.user!.id,
-    title, subject, className,
+    teacherName: teacherName?.trim() || req.user!.name,
+    title: title.trim(),
+    subject: subject.trim(),
+    className: className.trim(),
+    applicationMonthYear: applicationMonthYear?.trim() || "",
+    neededByDate: neededByDate?.trim() || "",
     originalFile: req.file.filename,
     originalName: Buffer.from(req.file.originalname, "latin1").toString("utf8"),
     status: "AGUARDANDO_FORMATACAO",
@@ -78,7 +85,7 @@ examsRouter.post("/", requireAuth, requireRole("PROFESSOR"), upload.single("file
   };
   db.exams.push(exam);
   save();
-  formatExam(exam.id); // sem "await": responde na hora e a IA trabalha em segundo plano
+
   res.status(201).json(exam);
 });
 
@@ -86,7 +93,10 @@ examsRouter.post("/", requireAuth, requireRole("PROFESSOR"), upload.single("file
 examsRouter.get("/", requireAuth, (req, res) => {
   const list = db.exams
     .filter((e) => canAccess(req.user!, e))
-    .map((e) => ({ ...e, teacherName: db.users.find((u) => u.id === e.teacherId)?.name ?? "" }))
+    .map((e) => ({
+      ...e,
+      teacherName: e.teacherName || db.users.find((u) => u.id === e.teacherId)?.name || "",
+    }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json(list);
 });
@@ -104,12 +114,13 @@ examsRouter.get("/:id/file/:kind", requireAuth, (req, res) => {
   res.download(path.join(formatted ? formattedDir : originalDir, file), downloadName);
 });
 
-// Formatar de novo (útil quando deu erro ou o resultado não agradou).
-examsRouter.post("/:id/reformat", requireAuth, (req, res) => {
+// Coordenação/Direção aciona a IA para formatar (ou formatar de novo).
+examsRouter.post("/:id/reformat", requireAuth, requireRole("DIRECAO"), (req, res) => {
   const exam = db.exams.find((e) => e.id === req.params.id);
-  if (!exam || !canAccess(req.user!, exam)) return res.status(404).json({ error: "Prova não encontrada." });
+  if (!exam) return res.status(404).json({ error: "Prova não encontrada." });
   if (exam.status === "IMPRESSA") return res.status(400).json({ error: "Esta prova já foi impressa." });
   exam.status = "AGUARDANDO_FORMATACAO";
+  exam.errorMessage = undefined;
   exam.updatedAt = new Date().toISOString();
   save();
   formatExam(exam.id);

@@ -73,7 +73,7 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout scrollable={showDemo}>
       <h1>Entrar no portal</h1>
       <p className="sub">Área restrita à equipe pedagógica.</p>
 

@@ -10,9 +10,9 @@ const SIDE_STEPS = [
   { icon: "printer", text: "A direção revisa, aprova e imprime" },
 ];
 
-export function AuthLayout({ children }: { children: ReactNode }) {
+export function AuthLayout({ children, scrollable = false }: { children: ReactNode; scrollable?: boolean }) {
   return (
-    <div className="auth">
+    <div className={`auth${scrollable ? " auth-scrollable" : ""}`}>
       <aside className="auth-side">
         <Logo />
         <div>

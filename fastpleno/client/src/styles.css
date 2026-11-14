@@ -533,3 +533,369 @@ input:focus-visible {
     width: 100%;
   }
 }
+
+/* ---------- Portal do Professor e Coordenação ---------- */
+.portal-content {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 6vw 64px;
+}
+
+.prof-nav-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 24px;
+}
+
+.prof-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.prof-tab-btn:hover {
+  color: #ffffff;
+}
+
+.prof-tab-btn.active {
+  background: var(--grad);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(123, 42, 150, 0.35);
+}
+
+.tab-count {
+  background: rgba(255, 255, 255, 0.16);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 12px;
+}
+
+.exam-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px;
+  display: grid;
+  gap: 24px;
+}
+
+.panel-head {
+  display: grid;
+  gap: 6px;
+}
+
+.panel-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.prof-exam-form {
+  display: grid;
+  gap: 18px;
+}
+
+.prof-exam-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+/* Box a parte para Data da aplicação / Prazo */
+.deadline-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid rgba(123, 42, 150, 0.45);
+}
+
+.deadline-info {
+  display: grid;
+  gap: 4px;
+}
+
+.deadline-info strong {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.deadline-info span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.deadline-box input[type="date"] {
+  width: auto;
+  min-width: 190px;
+  color-scheme: dark;
+}
+
+/* Botão customizado de Choose File em tons de roxo */
+.upload-submit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.custom-file-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 14px;
+  background: #151a2c;
+  border: 1px solid var(--line);
+  flex: 1;
+  min-width: 280px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.btn-choose-purple {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5b21b6 0%, #7b2a96 100%);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-choose-purple:hover {
+  filter: brightness(1.12);
+}
+
+.file-chosen-name {
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.feedback-banner.ok {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+}
+
+.feedback-banner.err {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.btn-link-inline {
+  background: none;
+  border: none;
+  color: var(--yellow);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+/* Aba Provas Anteriores */
+.history-list {
+  display: grid;
+  gap: 14px;
+}
+
+.history-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.history-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.history-meta {
+  font-size: 14px;
+  color: #d3d6e4;
+}
+
+.history-dates {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.status-pill {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-wait {
+  background: rgba(168, 85, 247, 0.16);
+  color: #d8b4fe;
+}
+
+.status-review {
+  background: rgba(255, 224, 27, 0.14);
+  color: var(--yellow);
+}
+
+.status-ready {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.status-printed {
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+
+.history-progress {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.step-dot {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: #151a2c;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.step-dot.done {
+  background: rgba(123, 42, 150, 0.25);
+  border-color: rgba(192, 132, 252, 0.45);
+  color: #ffffff;
+}
+
+/* Kanban Coordenação */
+.kanban-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.kanban-col {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.kanban-col-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+
+.kanban-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.kanban-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.card-detail {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .form-grid-3,
+  .form-grid-2,
+  .kanban-grid {
+    grid-template-columns: 1fr;
+  }
+  .deadline-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
