@@ -1,90 +1,243 @@
-// IA que LÊ a prova enviada pelo professor e devolve as questões organizadas (JSON).
-// Depois o template.ts transforma esse JSON na prova no modelo do colégio.
+import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import path from "path";
-import Anthropic from "@anthropic-ai/sdk";
 import mammoth from "mammoth";
 import { config } from "./config";
 
-export interface Question {
+export interface ExtractedQuestion {
   number: number;
-  type: "multipla_escolha" | "discursiva";
-  statement: string; // enunciado
-  options?: string[]; // alternativas (sem a letra)
-  answerLines?: number; // linhas para resposta (discursiva)
-  points?: number;
+  supportTitle?: string;
+  supportText?: string;
+  statement: string;
+  options?: { letter: string; text: string }[]; // A, B, C, D, E sem marca-texto
+  imageIndex?: number;
 }
 
-export interface ExamData {
-  instructions?: string; // orientações gerais ao aluno
-  questions: Question[];
+export interface ExtractedExamData {
+  questions: ExtractedQuestion[];
+  images: { buffer: Buffer; extension: string }[];
 }
 
-// ===== INSTRUÇÕES DA IA — edite aqui para mudar o comportamento da formatação =====
-const SYSTEM_PROMPT = `Você é o assistente de formatação de provas do FastPleno.
-Você recebe as questões enviadas por um professor (texto de um .docx ou foto das folhas)
-e deve organizá-las em JSON para o sistema montar a prova no modelo oficial do colégio.
+const SYSTEM_PROMPT = `Você é um diagramador pedagógico especialista em avaliações escolares.
+Extraia todas as questões do documento enviado e retorne APENAS um JSON válido no formato:
+{
+  "questions": [
+    {
+      "number": 1,
+      "supportTitle": "Título opcional do texto base",
+      "supportText": "Texto base opcional antes do enunciado",
+      "statement": "Enunciado da questão",
+      "options": [
+        { "letter": "A", "text": "Texto da alternativa A" },
+        { "letter": "B", "text": "Texto da alternativa B" }
+      ],
+      "imageIndex": 0
+    }
+  ]
+}
 
-REGRAS:
-- Não invente, remova nem reordene questões. Não mude o conteúdo; corrija só erros evidentes de digitação.
-- Questão com alternativas = "multipla_escolha". Coloque cada alternativa em "options" SEM a letra (sem "a)", "B." etc.).
-- Questão sem alternativas = "discursiva". Estime "answerLines" (de 3 a 10) conforme o tamanho da resposta esperada.
-- Se o professor indicou valor da questão, preencha "points". Se não, omita.
-- Se houver orientações gerais para o aluno, coloque em "instructions". Se não, omita.
-- Numere as questões a partir de 1.
-- Responda SOMENTE com JSON válido, sem markdown e sem comentários, neste formato:
-{"instructions":"...","questions":[{"number":1,"type":"multipla_escolha","statement":"...","options":["...","..."],"points":1},{"number":2,"type":"discursiva","statement":"...","answerLines":5}]}`;
+REGRAS OBRIGATÓRIAS:
+1. REMOVA TOTALMENTE qualquer indicação de gabarito: se alguma alternativa (A a E) tiver marca-texto, cor diferente, "(correta)", "X", asterisco ou negrito indicando a resposta certa, remova a marcação e deixe apenas o texto limpo da alternativa.
+2. Remova também listas de "Gabarito:" no final do documento.
+3. Preserve integralmente o texto das questões, acentuação, pontuação e numeração.`;
 
-// Prova de exemplo usada quando MOCK_AI=true (para testar sem gastar a API).
-const MOCK_EXAM: ExamData = {
-  instructions: "Leia com atenção. Use caneta azul ou preta. Não é permitido o uso de corretivo.",
-  questions: [
-    { number: 1, type: "multipla_escolha", statement: "Qual é o resultado de 7 x 8?", options: ["54", "56", "58", "64"], points: 1 },
-    { number: 2, type: "discursiva", statement: "Explique com suas palavras o que é fotossíntese.", answerLines: 5, points: 2 },
-  ],
-};
-
-export async function extractExam(filePath: string, originalName: string): Promise<ExamData> {
-  if (config.mockAi) return MOCK_EXAM;
-  if (!config.anthropicKey) throw new Error("Defina ANTHROPIC_API_KEY no arquivo .env do servidor.");
-
+export async function extractExam(filePath: string, originalName: string): Promise<ExtractedExamData> {
   const ext = path.extname(originalName).toLowerCase();
-  const content: Anthropic.ContentBlockParam[] = [];
+  const extractedImages: { buffer: Buffer; extension: string }[] = [];
 
-  if (ext === ".docx") {
-    // .docx: extraímos o texto e enviamos para a IA.
-    // (Figuras dentro do .docx não são extraídas nesta versão.)
-    const { value } = await mammoth.extractRawText({ path: filePath });
-    content.push({ type: "text", text: `Questões enviadas pelo professor:\n\n${value}` });
-  } else {
-    // Foto das folhas: a IA lê a imagem diretamente.
-    const mediaType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
-    content.push({
-      type: "image",
-      source: { type: "base64", media_type: mediaType, data: fs.readFileSync(filePath).toString("base64") },
-    });
-    content.push({ type: "text", text: "Estas são as folhas com as questões. Extraia e organize." });
+  if (config.mockAi) {
+    return {
+      questions: [
+        {
+          number: 1,
+          supportTitle: "TEXTO DE EXEMPLO (MODO MOCK)",
+          supportText: "Este é um texto gerado em modo de simulação porque MOCK_AI=true.",
+          statement: "Assinale a alternativa correta:",
+          options: [
+            { letter: "A", text: "Primeira alternativa limpa sem marca-texto." },
+            { letter: "B", text: "Segunda alternativa limpa." },
+            { letter: "C", text: "Terceira alternativa limpa." },
+            { letter: "D", text: "Quarta alternativa limpa." },
+          ],
+        },
+      ],
+      images: [],
+    };
   }
 
-  const client = new Anthropic({ apiKey: config.anthropicKey });
-  const response = await client.messages.create({
-    model: config.model,
-    max_tokens: 8000,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content }],
-  });
+  if (!config.geminiApiKey) {
+    throw new Error("Defina GEMINI_API_KEY no arquivo .env do servidor.");
+  }
 
-  const text = response.content.map((block) => (block.type === "text" ? block.text : "")).join("");
-  return parseExam(text);
-}
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+  const parts: Array<string | { inlineData: { data: string; mimeType: string } }> = [];
 
-/** Converte a resposta da IA em ExamData (tolera ```json e textos antes/depois). */
-function parseExam(text: string): ExamData {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("A IA não devolveu um formato válido. Tente formatar de novo.");
-  const data = JSON.parse(text.slice(start, end + 1)) as ExamData;
-  if (!Array.isArray(data.questions) || data.questions.length === 0)
-    throw new Error("A IA não encontrou questões no arquivo enviado.");
-  return data;
+  if (ext === ".docx") {
+    // Extrai o texto bruto e as imagens do .docx
+    const rawTextResult = await mammoth.extractRawText({ path: filePath });
+    await mammoth.convertToHtml(
+      { path: filePath },
+      {
+        convertImage: mammoth.images.imgElement(async (image) => {
+          const buffer = await image.read();
+          const imgExt = image.contentType.split("/")[1] || "png";
+          extractedImages.push({ buffer, extension: imgExt });
+          return { src: `img_${extractedImages.length - 1}` };
+        }),
+      }
+    );
+
+    parts.push(`Extraia as questões deste documento:\n\n${rawTextResult.value}`);
+  } else {
+    // Caso o professor envie uma imagem (.png, .jpg, .webp)
+    const base64 = fs.readFileSync(filePath).toString("base64");
+    const mimeType =
+      ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+
+    parts.push({ inlineData: { data: base64, mimeType } });
+    parts.push("Transcreva e extraia todas as questões desta imagem seguindo o JSON especificado.");
+  }
+
+  // Descobre automaticamente os modelos disponíveis na chave atual que suportam generateContent
+  let availableModels: string[] = [];
+  try {
+    const pager = await ai.models.list();
+    for await (const m of pager) {
+      const name = m.name?.replace(/^models\//, "") || "";
+      if (
+        name.includes("gemini") &&
+        (m.supportedActions?.includes("generateContent") || !m.supportedActions)
+      ) {
+        availableModels.push(name);
+      }
+    }
+  } catch {
+    // Se falhar a listagem, usa os nomes padrão
+  }
+
+  const preferredOrder = [
+    config.geminiModel && config.geminiModel !== "gemini-2.5-flash" ? config.geminiModel : "",
+    "gemini-3.8-flash",
+    "gemini-3.8-flash-lite",
+    "gemini-3.8-pro",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
+  ].filter(Boolean);
+
+  // Combina a ordem preferencial com qualquer modelo 'flash' ativo retornado pela API
+  const dynamicFlash = availableModels.filter((m) => m.includes("flash") && !m.includes("image") && !m.includes("audio"));
+  const modelsToTry = Array.from(
+    new Set([
+      ...(availableModels.length > 0
+        ? preferredOrder.filter((m) => availableModels.includes(m))
+        : preferredOrder),
+      ...dynamicFlash,
+    ])
+  );
+
+  let response;
+  let lastError: unknown;
+
+  for (const modelName of modelsToTry) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: parts,
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            responseMimeType: "application/json",
+          },
+        });
+        break;
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        const isRetryable =
+          msg.includes("503") ||
+          msg.includes("UNAVAILABLE") ||
+          msg.includes("404") ||
+          msg.includes("NOT_FOUND") ||
+          msg.includes("429");
+        if (!isRetryable) throw err;
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    }
+    if (response) break;
+  }
+
+  if (!response) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Nenhum modelo Gemini disponível respondeu no momento.");
+  }
+
+  let textOutput = "";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      // Lista de modelos em ordem de prioridade: se o principal estiver congestionado (503), troca automaticamente
+  const primaryModel =
+    !config.geminiModel || config.geminiModel === "gemini-2.5-flash"
+      ? "gemini-3.8-flash"
+      : config.geminiModel;
+
+  const fallbackModels = Array.from(
+    new Set([primaryModel, "gemini-3.8-flash-lite", "gemini-3.0-flash"])
+  );
+
+  let response;
+  let lastError: unknown;
+
+  for (const modelName of fallbackModels) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: parts,
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            responseMimeType: "application/json",
+          },
+        });
+        break;
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        const isRetryable =
+          msg.includes("503") ||
+          msg.includes("UNAVAILABLE") ||
+          msg.includes("404") ||
+          msg.includes("NOT_FOUND");
+        if (!isRetryable) throw err;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+    if (response) break;
+  }
+
+  if (!response) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Não foi possível obter resposta de nenhum modelo Gemini.");
+  }
+      textOutput = response.text || "";
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTemporary = msg.includes("503") || msg.includes("UNAVAILABLE");
+      if (!isTemporary || attempt === 3) throw err;
+      await new Promise((r) => setTimeout(r, 3000 * attempt));
+    }
+  }
+
+  const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("A IA não retornou uma estrutura válida de questões.");
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as { questions: ExtractedQuestion[] };
+  return {
+    questions: parsed.questions || [],
+    images: extractedImages,
+  };
 }

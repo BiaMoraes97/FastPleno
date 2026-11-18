@@ -16,6 +16,9 @@ const formattedDir = path.join(config.uploadsDir, "formatted");
 fs.mkdirSync(originalDir, { recursive: true });
 fs.mkdirSync(formattedDir, { recursive: true });
 
+// Trava em memória para evitar duas execuções simultâneas na mesma prova
+const processingExams = new Set<string>();
+
 // Upload: salva o arquivo em uploads/original com um nome único.
 const upload = multer({
   storage: multer.diskStorage({
@@ -34,8 +37,11 @@ const canAccess = (user: User, exam: Exam) => user.role === "DIRECAO" || exam.te
 
 /** Roda a IA e gera a prova formatada. Atualiza o status da prova no final. */
 async function formatExam(examId: string) {
+  if (processingExams.has(examId)) return;
   const exam = db.exams.find((e) => e.id === examId);
   if (!exam) return;
+
+  processingExams.add(examId);
   try {
     const teacher = db.users.find((u) => u.id === exam.teacherId);
     const data = await extractExam(path.join(originalDir, exam.originalFile), exam.originalName);
@@ -44,6 +50,8 @@ async function formatExam(examId: string) {
       subject: exam.subject,
       className: exam.className,
       teacherName: exam.teacherName || teacher?.name || "",
+      applicationMonthYear: exam.applicationMonthYear,
+      neededByDate: exam.neededByDate,
     });
     exam.formattedFile = `${exam.id}.docx`;
     fs.writeFileSync(path.join(formattedDir, exam.formattedFile), buffer);
@@ -51,7 +59,16 @@ async function formatExam(examId: string) {
     exam.errorMessage = undefined;
   } catch (e) {
     exam.status = "ERRO";
-    exam.errorMessage = e instanceof Error ? e.message : "Falha ao formatar a prova.";
+    const rawMsg = e instanceof Error ? e.message : "Falha ao formatar a prova.";
+    if (rawMsg.includes("429") || rawMsg.includes("RESOURCE_EXHAUSTED")) {
+      exam.errorMessage = "Limite de requisições por minuto da IA atingido. Aguarde 1 minuto e clique novamente em Formatar com IA.";
+    } else if (rawMsg.includes("503") || rawMsg.includes("UNAVAILABLE")) {
+      exam.errorMessage = "Os servidores da IA estão com alta demanda no momento. Aguarde alguns segundos e clique em Formatar com IA.";
+    } else {
+      exam.errorMessage = rawMsg;
+    }
+  } finally {
+    processingExams.delete(examId);
   }
   exam.updatedAt = new Date().toISOString();
   save();
@@ -119,6 +136,8 @@ examsRouter.post("/:id/reformat", requireAuth, requireRole("DIRECAO"), (req, res
   const exam = db.exams.find((e) => e.id === req.params.id);
   if (!exam) return res.status(404).json({ error: "Prova não encontrada." });
   if (exam.status === "IMPRESSA") return res.status(400).json({ error: "Esta prova já foi impressa." });
+  if (processingExams.has(exam.id)) return res.status(409).json({ error: "Esta prova já está sendo formatada." });
+
   exam.status = "AGUARDANDO_FORMATACAO";
   exam.errorMessage = undefined;
   exam.updatedAt = new Date().toISOString();

@@ -6,10 +6,10 @@ export const config = {
   port: Number(process.env.PORT) || 3001,
   jwtSecret: process.env.JWT_SECRET || "troque-este-segredo",
   directionCode: process.env.DIRECTION_CODE || "FASTPLENO-DIRECAO-2026",
-  anthropicKey: process.env.ANTHROPIC_API_KEY || "",
-  model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
+  geminiApiKey: process.env.GEMINI_API_KEY || "",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-3.8-flash",
   mockAi: process.env.MOCK_AI === "true",
-  enableDemo: process.env.ENABLE_DEMO !== "false",
-  uploadsDir: path.resolve("uploads"), // onde ficam os arquivos enviados e formatados
-  dataFile: path.resolve("data/db.json"), // "banco de dados" (arquivo JSON)
+  enableDemo: process.env.ENABLE_DEMO === "true",
+  dataFile: path.resolve(__dirname, "../data/db.json"),
+  uploadsDir: path.resolve(__dirname, "../uploads"),
 };

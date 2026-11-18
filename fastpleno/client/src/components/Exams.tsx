@@ -318,14 +318,20 @@ function ExamCard({
   const download = (kind: "original" | "formatted", name: string) =>
     downloadFile(exam.id, kind, name).catch((e) => onError(e.message));
 
+  useEffect(() => {
+    setFormatting(false);
+  }, [exam.updatedAt]);
+
   async function handleFormat() {
+    if (formatting) return;
     setFormatting(true);
+    onError("");
     try {
       await api.reformat(exam.id);
+      setTimeout(() => setFormatting(false), 45000);
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Erro ao formatar");
-    } finally {
       setFormatting(false);
+      onError(e instanceof Error ? e.message : "Erro ao formatar");
     }
   }
 
@@ -355,7 +361,9 @@ function ExamCard({
 
         {exam.status === "PRONTA_PARA_IMPRESSAO" && (
           <>
-            <button onClick={() => run(() => api.reformat(exam.id))}>Formatar de novo</button>
+            <button disabled={formatting} onClick={handleFormat}>
+              {formatting ? "Formatando..." : "Formatar de novo"}
+            </button>
             <button className="primary" onClick={() => run(() => api.markPrinted(exam.id))}>
               Marcar como impressa
             </button>
