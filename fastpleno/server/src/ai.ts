@@ -42,10 +42,14 @@ REGRAS OBRIGATÓRIAS:
 3. Preserve integralmente o texto das questões, acentuação, pontuação e numeração.`;
 
 export async function extractExam(filePath: string, originalName: string): Promise<ExtractedExamData> {
+  console.log("[IA] Iniciando extração do arquivo.");
+  console.log("[IA] Lendo arquivo:", filePath);
+
   const ext = path.extname(originalName).toLowerCase();
   const extractedImages: { buffer: Buffer; extension: string }[] = [];
 
   if (config.mockAi) {
+    console.log("[IA] Modo mock ativo; ignorando chamada à IA.");
     return {
       questions: [
         {
@@ -69,11 +73,14 @@ export async function extractExam(filePath: string, originalName: string): Promi
     throw new Error("Defina GEMINI_API_KEY no arquivo .env do servidor.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+  const ai = new GoogleGenAI({
+    apiKey: config.geminiApiKey,
+    httpOptions: { timeout: 60_000 },
+  });
   const parts: Array<string | { inlineData: { data: string; mimeType: string } }> = [];
 
   if (ext === ".docx") {
-    // Extrai o texto bruto e as imagens do .docx
+    console.log("[IA] Extraindo texto e imagens do documento DOCX...");
     const rawTextResult = await mammoth.extractRawText({ path: filePath });
     await mammoth.convertToHtml(
       { path: filePath },
@@ -88,154 +95,97 @@ export async function extractExam(filePath: string, originalName: string): Promi
     );
 
     parts.push(`Extraia as questões deste documento:\n\n${rawTextResult.value}`);
+    console.log(
+      `[IA] Documento processado: ${rawTextResult.value.length} caracteres e ${extractedImages.length} imagens.`
+    );
   } else {
-    // Caso o professor envie uma imagem (.png, .jpg, .webp)
+    console.log("[IA] Carregando imagem para extração...");
     const base64 = fs.readFileSync(filePath).toString("base64");
     const mimeType =
       ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
 
     parts.push({ inlineData: { data: base64, mimeType } });
     parts.push("Transcreva e extraia todas as questões desta imagem seguindo o JSON especificado.");
+    console.log(`[IA] Imagem carregada (${mimeType}).`);
   }
 
-  // Descobre automaticamente os modelos disponíveis na chave atual que suportam generateContent
-  let availableModels: string[] = [];
+  let activeModels: string[] = [];
   try {
     const pager = await ai.models.list();
     for await (const m of pager) {
       const name = m.name?.replace(/^models\//, "") || "";
       if (
         name.includes("gemini") &&
-        (m.supportedActions?.includes("generateContent") || !m.supportedActions)
+        !name.includes("image") &&
+        !name.includes("audio") &&
+        !name.includes("tts") &&
+        !name.includes("embedding")
       ) {
-        availableModels.push(name);
+        activeModels.push(name);
       }
     }
-  } catch {
-    // Se falhar a listagem, usa os nomes padrão
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[IA] Não foi possível consultar os modelos ativos:", msg);
+    activeModels = ["gemini-3.8-flash"];
   }
 
-  const preferredOrder = [
-    config.geminiModel && config.geminiModel !== "gemini-2.5-flash" ? config.geminiModel : "",
-    "gemini-3.8-flash",
-    "gemini-3.8-flash-lite",
-    "gemini-3.8-pro",
-    "gemini-3-flash-preview",
-    "gemini-2.5-flash",
-  ].filter(Boolean);
-
-  // Combina a ordem preferencial com qualquer modelo 'flash' ativo retornado pela API
-  const dynamicFlash = availableModels.filter((m) => m.includes("flash") && !m.includes("image") && !m.includes("audio"));
-  const modelsToTry = Array.from(
+  const candidates = Array.from(
     new Set([
-      ...(availableModels.length > 0
-        ? preferredOrder.filter((m) => availableModels.includes(m))
-        : preferredOrder),
-      ...dynamicFlash,
+      "gemini-3.8-flash",
+      ...activeModels.filter((m) => m.includes("flash")),
+      ...activeModels.filter((m) => m.includes("pro")),
     ])
-  );
+  ).filter((m) => activeModels.length === 0 || activeModels.includes(m));
+
+  console.log("[IA] Modelos disponíveis para tentativa:", candidates);
 
   let response;
   let lastError: unknown;
 
-  for (const modelName of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        response = await ai.models.generateContent({
-          model: modelName,
-          contents: parts,
-          config: {
-            systemInstruction: SYSTEM_PROMPT,
-            responseMimeType: "application/json",
-          },
-        });
-        break;
-      } catch (err) {
-        lastError = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        const isRetryable =
-          msg.includes("503") ||
-          msg.includes("UNAVAILABLE") ||
-          msg.includes("404") ||
-          msg.includes("NOT_FOUND") ||
-          msg.includes("429");
-        if (!isRetryable) throw err;
-        await new Promise((r) => setTimeout(r, 2500));
-      }
-    }
-    if (response) break;
-  }
-
-  if (!response) {
-    throw lastError instanceof Error
-      ? lastError
-      : new Error("Nenhum modelo Gemini disponível respondeu no momento.");
-  }
-
-  let textOutput = "";
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (const modelName of candidates) {
     try {
-      // Lista de modelos em ordem de prioridade: se o principal estiver congestionado (503), troca automaticamente
-  const primaryModel =
-    !config.geminiModel || config.geminiModel === "gemini-2.5-flash"
-      ? "gemini-3.8-flash"
-      : config.geminiModel;
-
-  const fallbackModels = Array.from(
-    new Set([primaryModel, "gemini-3.8-flash-lite", "gemini-3.0-flash"])
-  );
-
-  let response;
-  let lastError: unknown;
-
-  for (const modelName of fallbackModels) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        response = await ai.models.generateContent({
-          model: modelName,
-          contents: parts,
-          config: {
-            systemInstruction: SYSTEM_PROMPT,
-            responseMimeType: "application/json",
-          },
-        });
-        break;
-      } catch (err) {
-        lastError = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        const isRetryable =
-          msg.includes("503") ||
-          msg.includes("UNAVAILABLE") ||
-          msg.includes("404") ||
-          msg.includes("NOT_FOUND");
-        if (!isRetryable) throw err;
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-    }
-    if (response) break;
-  }
-
-  if (!response) {
-    throw lastError instanceof Error
-      ? lastError
-      : new Error("Não foi possível obter resposta de nenhum modelo Gemini.");
-  }
-      textOutput = response.text || "";
+      console.log(`[IA] Tentando formatar com ${modelName}...`);
+      response = await ai.models.generateContent({
+        model: modelName,
+        contents: parts,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: "application/json",
+        },
+      });
+      console.log(`[IA] Sucesso com ${modelName}!`);
       break;
     } catch (err) {
+      lastError = err;
       const msg = err instanceof Error ? err.message : String(err);
-      const isTemporary = msg.includes("503") || msg.includes("UNAVAILABLE");
-      if (!isTemporary || attempt === 3) throw err;
-      await new Promise((r) => setTimeout(r, 3000 * attempt));
+      console.warn(`[IA] Falha com ${modelName}:`, msg);
+      const isTemporary =
+        msg.includes("503") ||
+        msg.includes("UNAVAILABLE") ||
+        msg.includes("504") ||
+        msg.includes("DEADLINE_EXCEEDED") ||
+        msg.includes("429") ||
+        msg.includes("404");
+      if (!isTemporary) throw err;
     }
   }
 
+  if (!response) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Todos os modelos disponíveis estão congestionados no momento.");
+  }
+
+  const textOutput = response.text || "";
+  console.log("[IA] Validando resposta JSON...");
   const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("A IA não retornou uma estrutura válida de questões.");
   }
 
   const parsed = JSON.parse(jsonMatch[0]) as { questions: ExtractedQuestion[] };
+  console.log(`[IA] Extração concluída: ${parsed.questions?.length || 0} questões encontradas.`);
   return {
     questions: parsed.questions || [],
     images: extractedImages,

@@ -32,7 +32,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Entre com seu login institucional (ou crie sua conta) e preencha as informações básicas da avaliação: nome do professor(a), série, disciplina, título da prova, mês e ano da aplicação, além de para quando você precisa da prova impressa.",
         tip: "Dica: Confira o título e a série antes de enviar para agilizar a triagem da coordenação.",
-        image: "/prints/prof-passo1.png",
+        image: "/prints/prof-passo1.png.jpeg",
         imageAlt: "Formulário de envio com dados da avaliação preenchidos pelo professor",
       },
       {
@@ -41,7 +41,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Faça o upload do documento do Word (.docx) contendo apenas o texto, imagens ou tabelas das suas questões — sem precisar se preocupar com cabeçalho, margens ou numeração oficial.",
         tip: "O formato .docx garante que gráficos, tabelas e fórmulas cheguem intactos para a coordenação.",
-        image: "/prints/prof-passo2.png",
+        image: "/prints/prof-passo2.png.jpeg",
         imageAlt: "Área de seleção e envio do arquivo DOCX bruto",
       },
       {
@@ -50,7 +50,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Ao concluir o envio, sua prova cai instantaneamente no painel da coordenação, que ficará responsável por acionar a IA para aplicar o padrão do colégio, revisar e liberar o arquivo para a impressão.",
         tip: "Você não precisa acionar a IA nem ajustar o layout: a equipe pedagógica cuida dessa etapa.",
-        image: "/prints/prof-passo3.png",
+        image: "/prints/prof-passo3.png.jpeg",
         imageAlt: "Confirmação de envio da prova para a coordenação",
       },
       {
@@ -59,7 +59,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Na aba 'Provas anteriores', você acompanha em tempo real em qual etapa sua avaliação está (enviada, em formatação/revisão pela coordenação ou impressa).",
         tip: "Acompanhe o status da sua prova em tempo real e saiba quando ela foi impressa.",
-        image: "/prints/prof-passo4.png",
+        image: "/prints/prof-passo4.png.jpeg",
         imageAlt: "Aba Provas anteriores mostrando o status do fluxo de impressão",
       },
     ],
@@ -76,7 +76,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Todas as avaliações enviadas pelos professores aparecem organizadas por status no painel da coordenação: Não Formatadas, Em Revisão e Prontas para Impressão.",
         tip: "Filtre rapidamente as avaliações por prioridade ou data de aplicação.",
-        image: "/prints/coord-passo1.png",
+        image: "/prints/coord-passo1.png.jpeg",
         imageAlt: "Painel da coordenação mostrando as provas recebidas por status",
       },
       {
@@ -85,7 +85,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Nos arquivos recém-chegados, clique para encaminhar à IA. Em segundos, o sistema estrutura as questões no padrão do colégio com cabeçalho, fontes, colunas e quebras de página.",
         tip: "O card avança automaticamente para a etapa de revisão assim que a IA conclui a formatação.",
-        image: "/prints/coord-passo2.png",
+        image: "/prints/coord-passo2.png.jpeg",
         imageAlt: "Botão de formatação por IA no card da avaliação",
       },
       {
@@ -94,7 +94,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "Abra a pré-visualização da prova formatada para conferir a estrutura. Se precisar de alguma correção nas questões, fale direto com à IA pelo chat do card; se estiver tudo certo, aprove.",
         tip: "Cada etapa é prévia e reversível: você pode solicitar ajustes ou reverter a aprovação antes de enviar para impressão.",
-        image: "/prints/coord-passo3.png",
+        image: "/prints/coord-passo3.png.jpeg",
         imageAlt: "Pré-visualização da prova formatada",
       },
       {
@@ -103,7 +103,7 @@ const GUIDES: Record<"professor" | "coordenador", GuideSection> = {
         description:
           "As provas aprovadas ficam reunidas na coluna final com o arquivo pronto para reprografia. Após imprimir, marque como concluída para atualizar o status para o professor.",
         tip: "Assim que o status é atualizado, o professor visualiza que a prova já seguiu para impressão.",
-        image: "/prints/coord-passo4.png",
+        image: "/prints/coord-passo4.png.jpeg",
         imageAlt: "Coluna de provas aprovadas prontas para impressão",
       },
     ],

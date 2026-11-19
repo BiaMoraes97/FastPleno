@@ -61,9 +61,14 @@ async function formatExam(examId: string) {
     exam.status = "ERRO";
     const rawMsg = e instanceof Error ? e.message : "Falha ao formatar a prova.";
     if (rawMsg.includes("429") || rawMsg.includes("RESOURCE_EXHAUSTED")) {
-      exam.errorMessage = "Limite de requisições por minuto da IA atingido. Aguarde 1 minuto e clique novamente em Formatar com IA.";
-    } else if (rawMsg.includes("503") || rawMsg.includes("UNAVAILABLE")) {
-      exam.errorMessage = "Os servidores da IA estão com alta demanda no momento. Aguarde alguns segundos e clique em Formatar com IA.";
+      exam.errorMessage = "Limite de requisições por minuto da IA atingido. Aguarde 1 minuto e tente novamente.";
+    } else if (
+      rawMsg.includes("503") ||
+      rawMsg.includes("UNAVAILABLE") ||
+      rawMsg.includes("504") ||
+      rawMsg.includes("DEADLINE_EXCEEDED")
+    ) {
+      exam.errorMessage = "O servidor da IA demorou mais que o esperado para responder. Clique novamente em Formatar com IA.";
     } else {
       exam.errorMessage = rawMsg;
     }
