@@ -9,44 +9,46 @@ export interface ExtractedQuestion {
   supportTitle?: string;
   supportText?: string;
   statement: string;
-  options?: { letter: string; text: string }[]; // A, B, C, D, E sem marca-texto
-  imageIndex?: number;
+  imageIndex?: number | null;
+  alternatives?: string[];
+  options?: { letter: string; text: string }[];
+  linesForAnswer?: number;
 }
 
 export interface ExtractedExamData {
   questions: ExtractedQuestion[];
-  images: { buffer: Buffer; extension: string }[];
+  images: { buffer: Buffer; contentType: string; extension: string }[];
 }
 
-const SYSTEM_PROMPT = `Você é um diagramador pedagógico especialista em avaliações escolares.
-Extraia todas as questões do documento enviado e retorne APENAS um JSON válido no formato:
+const SYSTEM_PROMPT = `Você é um extrator fiel de provas escolares do Colégio Pleno.
+Sua ÚNICA tarefa é extrair EXATAMENTE as questões presentes no documento enviado e retornar um JSON válido.
+
+REGRAS CRÍTICAS (OBRIGATÓRIO SEGUIR):
+1. NÃO INVENTE, NÃO ADICIONE E NÃO COMPLETE QUESTÕES. Se o documento tem 8 questões, o array "questions" deve ter EXATAMENTE 8 itens. Nunca crie questões novas.
+2. NÃO altere números, enunciados ou alternativas das questões originais; apenas corrija erros óbvios de digitação ou espaçamento colado.
+3. IMAGENS: No texto extraído, as imagens do documento original aparecem marcadas como [IMAGEM 0], [IMAGEM 1], etc. Quando uma questão possuir um marcador [IMAGEM X] associado ao seu enunciado, preencha "imageIndex" com o número X correspondente (ex: 0, 1, 2) e remova a tag "[IMAGEM X]" do texto do enunciado. Se a questão não tiver imagem, use null.
+4. Se o documento original já vier com um cabeçalho de prova (nome da escola, professor, série, data), IGNORE esse cabeçalho e extraia APENAS as questões.
+5. Retorne APENAS JSON válido no formato:
 {
   "questions": [
     {
       "number": 1,
-      "supportTitle": "Título opcional do texto base",
-      "supportText": "Texto base opcional antes do enunciado",
-      "statement": "Enunciado da questão",
-      "options": [
-        { "letter": "A", "text": "Texto da alternativa A" },
-        { "letter": "B", "text": "Texto da alternativa B" }
-      ],
-      "imageIndex": 0
+      "supportTitle": "",
+      "supportText": "",
+      "statement": "Enunciado completo da questão",
+      "imageIndex": null,
+      "alternatives": ["A) ...", "B) ...", "C) ...", "D) ...", "E) ..."],
+      "linesForAnswer": 0
     }
   ]
-}
-
-REGRAS OBRIGATÓRIAS:
-1. REMOVA TOTALMENTE qualquer indicação de gabarito: se alguma alternativa (A a E) tiver marca-texto, cor diferente, "(correta)", "X", asterisco ou negrito indicando a resposta certa, remova a marcação e deixe apenas o texto limpo da alternativa.
-2. Remova também listas de "Gabarito:" no final do documento.
-3. Preserve integralmente o texto das questões, acentuação, pontuação e numeração.`;
+}`;
 
 export async function extractExam(filePath: string, originalName: string): Promise<ExtractedExamData> {
   console.log("[IA] Iniciando extração do arquivo.");
   console.log("[IA] Lendo arquivo:", filePath);
 
   const ext = path.extname(originalName).toLowerCase();
-  const extractedImages: { buffer: Buffer; extension: string }[] = [];
+  const extractedImages: { buffer: Buffer; contentType: string; extension: string }[] = [];
 
   if (config.mockAi) {
     console.log("[IA] Modo mock ativo; ignorando chamada à IA.");
@@ -57,12 +59,14 @@ export async function extractExam(filePath: string, originalName: string): Promi
           supportTitle: "TEXTO DE EXEMPLO (MODO MOCK)",
           supportText: "Este é um texto gerado em modo de simulação porque MOCK_AI=true.",
           statement: "Assinale a alternativa correta:",
-          options: [
-            { letter: "A", text: "Primeira alternativa limpa sem marca-texto." },
-            { letter: "B", text: "Segunda alternativa limpa." },
-            { letter: "C", text: "Terceira alternativa limpa." },
-            { letter: "D", text: "Quarta alternativa limpa." },
+          imageIndex: null,
+          alternatives: [
+            "A) Primeira alternativa limpa sem marca-texto.",
+            "B) Segunda alternativa limpa.",
+            "C) Terceira alternativa limpa.",
+            "D) Quarta alternativa limpa.",
           ],
+          linesForAnswer: 0,
         },
       ],
       images: [],
@@ -77,26 +81,55 @@ export async function extractExam(filePath: string, originalName: string): Promi
     apiKey: config.geminiApiKey,
     httpOptions: { timeout: 60_000 },
   });
+
   const parts: Array<string | { inlineData: { data: string; mimeType: string } }> = [];
 
   if (ext === ".docx") {
     console.log("[IA] Extraindo texto e imagens do documento DOCX...");
-    const rawTextResult = await mammoth.extractRawText({ path: filePath });
-    await mammoth.convertToHtml(
+    const htmlResult = await mammoth.convertToHtml(
       { path: filePath },
       {
         convertImage: mammoth.images.imgElement(async (image) => {
           const buffer = await image.read();
-          const imgExt = image.contentType.split("/")[1] || "png";
-          extractedImages.push({ buffer, extension: imgExt });
-          return { src: `img_${extractedImages.length - 1}` };
+          const contentType = image.contentType || "image/png";
+          const imgExt = contentType.split("/")[1] || "png";
+          const idx = extractedImages.length;
+          extractedImages.push({ buffer, contentType, extension: imgExt });
+          return { src: `img_${idx}` };
         }),
       }
     );
 
-    parts.push(`Extraia as questões deste documento:\n\n${rawTextResult.value}`);
+    // Converte o HTML mantendo [IMAGEM X] na posição exata de cada figura no texto
+    const textWithMarkers = htmlResult.value
+      .replace(/<img[^>]*src="img_(\d+)"[^>]*>/gi, "\n[IMAGEM $1]\n")
+      .replace(/<\/p>|<\/div>|<\/tr>|<br\s*\/?>/gi, "\n")
+      .replace(/<\/td>|<\/th>/gi, " | ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    parts.push(`Extraia EXATAMENTE as questões deste documento:\n\n${textWithMarkers}`);
+
+    extractedImages.forEach((img, idx) => {
+      parts.push(`Imagem ${idx}:`);
+      parts.push({
+        inlineData: {
+          data: img.buffer.toString("base64"),
+          mimeType: img.contentType,
+        },
+      });
+    });
+
     console.log(
-      `[IA] Documento processado: ${rawTextResult.value.length} caracteres e ${extractedImages.length} imagens.`
+      `[IA] Documento processado: ${textWithMarkers.length} caracteres e ${extractedImages.length} imagens.`
     );
   } else {
     console.log("[IA] Carregando imagem para extração...");
@@ -185,9 +218,27 @@ export async function extractExam(filePath: string, originalName: string): Promi
   }
 
   const parsed = JSON.parse(jsonMatch[0]) as { questions: ExtractedQuestion[] };
-  console.log(`[IA] Extração concluída: ${parsed.questions?.length || 0} questões encontradas.`);
+
+  // Normaliza alternativas caso a IA retorne no formato antigo "options" ou no novo "alternatives"
+  const normalizedQuestions = (parsed.questions || []).map((q, idx) => {
+    const alts =
+      q.alternatives && q.alternatives.length > 0
+        ? q.alternatives
+        : q.options && q.options.length > 0
+        ? q.options.map((o) => `${o.letter}) ${o.text}`)
+        : [];
+
+    return {
+      ...q,
+      number: q.number || idx + 1,
+      imageIndex: typeof q.imageIndex === "number" ? q.imageIndex : null,
+      alternatives: alts,
+    };
+  });
+
+  console.log(`[IA] Extração concluída: ${normalizedQuestions.length} questões encontradas.`);
   return {
-    questions: parsed.questions || [],
+    questions: normalizedQuestions,
     images: extractedImages,
   };
 }
