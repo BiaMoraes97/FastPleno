@@ -1,51 +1,27 @@
-# FastPleno — Gestão e formatação inteligente de avaliações
+# FastPleno
 
-Professores enviam as questões (.docx ou foto das folhas), a IA formata no modelo do colégio e a
-direção revisa, aprova e imprime.
+Sistema interno do **Colégio Pleno** para envio, formatação automatizada com Inteligência Artificial (Google Gemini) e gerenciamento de provas escolares no padrão visual da instituição.
 
-**Stack:** React + TypeScript (Vite) no `client/` · Node.js + Express + TypeScript no `server/`.
+## Funcionalidades
 
-## Como rodar
+- **Envio de provas:** Professores enviam arquivos `.docx` ou imagens com os metadados da avaliação (disciplina, série, unidade/bimestre e data de aplicação).
+- **Extração inteligente com IA:** Leitura automática das questões, alternativas e imagens embutidas via Google Gemini, preservando o conteúdo e a quantidade exata de questões.
+- **Diagramação automática (`.docx`):** Geração do documento pronto para impressão com:
+  - Cabeçalho oficial com a logo do Colégio Pleno, identificação do professor, série, campo de nota com divisória, nome do aluno e data.
+  - Layout em 2 colunas com linha divisória vertical.
+  - Fonte **Arial 10pt** (com ajuste automático para **9pt** quando há quebra de poucas linhas em página ímpar) e margens padronizadas (`0.1"` no topo da 1ª página e `0.5"` nas demais).
+- **Fluxo de impressão:** Acompanhamento de status (*Aguardando formatação*, *Formatadas/Aguardando Análise* e *Impressas*).
 
-Você precisa do Node.js 18+ instalado. Abra **dois terminais**:
+## Tecnologias Utilizadas
 
-```bash
-# Terminal 1 — servidor (porta 3001)
-cd server
-npm install
-cp .env.example .env      # no Windows: copy .env.example .env
-npm run dev
+- **Front-end:** React, TypeScript, Vite
+- **Back-end:** Node.js, Express, TypeScript
+- **IA & Documentos:** `@google/genai` (Google Gemini), `mammoth`, `docx`
 
-# Terminal 2 — site (porta 5173)
-cd client
-npm install
-npm run dev
-```
+## Como Executar Localmente
 
-Abra http://localhost:5173. Contas de teste (botão "Contas de demonstração" no login):
-`professor@fastpleno.demo` e `direcao@fastpleno.demo`, senha `demo123`.
+### 1. Configurar variáveis de ambiente
+Na pasta `fastpleno/server`, copie o arquivo `.env.example` para `.env` e preencha sua chave da API do Gemini:
 
-## IA de formatação
-
-1. Crie uma chave em https://console.anthropic.com e coloque em `server/.env` → `ANTHROPIC_API_KEY=`.
-2. Sem chave? Use `MOCK_AI=true` no `.env`: o sistema gera uma prova de exemplo para você testar o fluxo.
-
-Como funciona: `ai.ts` lê o arquivo e pede à IA um JSON com as questões → `template.ts` monta o .docx.
-
-## Onde mexer para alterar cada coisa
-
-| Quero mudar...                         | Arquivo                                   |
-|----------------------------------------|-------------------------------------------|
-| Textos da página inicial               | `client/src/pages/Landing.tsx` (objeto `TEXT`) |
-| Cores e visual                         | `client/src/styles.css` (bloco `:root`)   |
-| Modelo da prova (cabeçalho, fonte...)  | `server/src/template.ts` (objeto `MODEL`) |
-| Regras/instruções da IA                | `server/src/ai.ts` (`SYSTEM_PROMPT`)      |
-| Etapas do quadro de provas             | `client/src/components/Exams.tsx` (`COLUMNS`) e `server/src/db.ts` (`ExamStatus`) |
-| Código da direção, chave da IA, modelo | `server/.env`                             |
-
-## Limitações desta versão (e próximos passos)
-
-- **Banco de dados em arquivo JSON** (`server/data/db.json`): simples para começar. Para uso real, migre para MySQL/PostgreSQL.
-- **Figuras dentro do .docx** não são extraídas; só o texto. Fotos das folhas são lidas pela IA normalmente.
-- Antes de publicar: `ENABLE_DEMO=false`, troque `JWT_SECRET` e `DIRECTION_CODE`, use HTTPS.
-- Publicar: `cd client && npm run build`; depois, em `server`, `npm run build && npm start` — o Node serve o site também.
+```env
+GEMINI_API_KEY=sua_chave_aqui
